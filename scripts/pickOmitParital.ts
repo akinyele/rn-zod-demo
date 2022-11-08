@@ -1,7 +1,8 @@
 import z from "zod";
 
 /**
- * Zod Union Create a way for use validate with a logical `OR`
+ * Zod Object Schema follows typescript utility methods and provides use with
+ * pick, omit and partial utility functions.
  */
 const zodUserSchema = z.object({
     email: z.string(),
@@ -10,14 +11,9 @@ const zodUserSchema = z.object({
     gender: z.string()
 });
 
-const zodPlaceSchema = z.object({
-    address: z.string(),
-    address2: z.string().optional(),
-    state: z.string(),
-    zip: z.number()
-})
-
-const personOrPlace = z.union([zodPlaceSchema, zodUserSchema]);
+const nameEmailSchema = zodUserSchema.pick({email: true, name: true})
+const noAgeSchema = zodUserSchema.omit({age: true})
+const partialUserSchema = zodUserSchema.partial()
 
 const JohnDoe = {
     email: 'john@email.com',
@@ -26,29 +22,3 @@ const JohnDoe = {
     gender: 'M',
 }
 
-const RandomAddress = {
-    address: '6041 South Goldenrod',
-    address1: 'APT 3',
-    state: 'FL',
-    zip: 12313,
-}
-
-const randomAnimal = {
-    type: 'DOG',
-    color: 'black'
-}
-
-const validatedPerson = personOrPlace.parse(JohnDoe) // Fine
-console.log('validatedPerson: ', validatedPerson);
-
-const parsedPlaced = personOrPlace.parse(RandomAddress);
-console.log('parsedPlaced: ', parsedPlaced);
-
-
-const parsedAnimal = personOrPlace.parse(randomAnimal); // Throws error.
-
-
-type UserPlace = z.infer<typeof personOrPlace>;
-type user = z.infer<typeof zodUserSchema>;
-
-// (validatedPerson as user).age

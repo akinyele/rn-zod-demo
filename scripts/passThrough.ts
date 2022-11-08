@@ -1,7 +1,8 @@
 import z from "zod";
 
 /**
- * By default zod required all parameter
+ * Strip, PassThrough & Strict
+ * By default zod will strip out unrecognized keys when parsing.
  */
 const zodUserSchema = z.object({
     email: z.string(),
@@ -9,11 +10,6 @@ const zodUserSchema = z.object({
     age: z.number(),
     gender: z.string()
 });
-
-
-const optionalGender = zodUserSchema.extend({
-    gender: z.string().optional()
-})
 
 const JohnDoe = {
     email: 'john@email.com',
@@ -23,17 +19,13 @@ const JohnDoe = {
     Job: 'Teacher',
 }
 
-const BobSmith = {
-    email: 'john@email.com',
-    name: 'Bob Smith',
-    age: 20,
-    Job: 'Teacher',
+const parsedJohn = zodUserSchema.parse(JohnDoe); // Fine
 
-}
+console.log('parsedJohn', parsedJohn);  // { email: 'john@email.com', name: 'John Doe', age: 20, gender: 'M' }
 
-zodUserSchema.parse(JohnDoe); // Fine
-optionalGender.parse(BobSmith); // Fine
-zodUserSchema.parse(BobSmith); // Throws Error.
+const parseJohnWPassThrough = zodUserSchema.passthrough().parse(JohnDoe) // Fine
 
+console.log('parseJohnWPassThrough', parseJohnWPassThrough); // { email: 'john@email.com', name: 'John Doe', age: 20, gender: 'M', Job: 'Teacher' }
 
+zodUserSchema.strict().parse(JohnDoe) // Throws Error
 

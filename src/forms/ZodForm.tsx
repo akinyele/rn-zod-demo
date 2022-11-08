@@ -7,100 +7,251 @@ import {
     Dimensions,
     Alert
 } from "react-native";
-import { Formik } from "formik";
-import * as Yup from "yup";
-import {FC} from "react";
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {Picker} from "@react-native-picker/picker";
+import { toFormikValidationSchema } from 'zod-formik-adapter';
+import ErrorMessage from "../components/ErrorMessage";
+import { Formik, Field } from "formik";
+import z from "zod";
+import {useCallback, useState} from "react";
 
-const validationSchema = Yup.object().shape({
-    email: Yup.string()
-        .label("Email")
-        .email("Enter a valid email")
-        .required("Please enter a registered email"),
-    password: Yup.string()
-        .label("Password")
-        .required()
-        .min(6, "Password must have at least 6 characters "),
-});
-
-const ErrorMessage: FC<{ errorValue : String | undefined | boolean }> = ({errorValue}) => (
-    <View style={styles.errorContainer}>
-    <Text style={styles.errorText}>{errorValue}</Text>
-        </View>
-);
-
-type formValues = {
-    email: string,
-    password: string
+enum FormStateEnum {
+    LOGIN,
+    SIGNUP
 }
 
-export default function App() {
-    function onLoginHandler(values: formValues) {
+
+const userValidationSchema = z.object({
+    email: z.string({ required_error: 'Please enter a registered email'} )
+        .email({ message: "Invalid email address" }),
+    password: z.string()
+        .min(6,  "Password must have at least 6 characters "),
+})
+
+const takenUserNames = ['SuperMan', 'Batman', 'Flash']
+const userTypes =  ['Villain, Hero, Civilian'] as const;
+const UserTypeEnums = z.enum(userTypes);
+
+/**
+ *  Creating new user schema for sign up.
+ */
+const newUserValidation = userValidationSchema.extend({
+    username: z.string().trim().refine(async (value) => {
+        /*
+         * Check to see if username is taken.
+         */
+        return !takenUserNames.some(elements => value.toLowerCase() === elements.toLowerCase())
+    }, "Username already taken"),
+    passwordConfirmation: z.string().min(6, "Password mus have at least 6 characters"),
+    // type: UserTypeEnums
+}) .refine(({ password, passwordConfirmation }) => password === passwordConfirmation, {
+    message: "Passwords must match",
+    path: ["passwordConfirmation"]
+});
+
+const newOrOld = z.union([userValidationSchema, newUserValidation])
+
+type User = z.infer<typeof userValidationSchema>
+type NewUser = z.infer<typeof newUserValidation>
+
+
+type NewOrOldUser = z.infer<typeof newOrOld>;
+
+export default function ZodForm() {
+
+    const {
+        handleSubmit,
+        trigger,
+        control,
+        formState: { errors },
+    } = useForm({
+        mode: 'onTouched',
+        resolver: zodResolver(newUserValidation),
+        defaultValues: {
+            email: '',
+            username: '',
+            password: '',
+            userType: userTypes[0],
+            passwordConfirmation: '',
+        }
+    });
+
+
+    const {
+        handleSubmit: loginSubmit,
+        control: loginController,
+        formState: { errors: loginErrors },
+    } = useForm({
+        mode: 'onTouched',
+        resolver: zodResolver(userValidationSchema),
+        defaultValues: {
+            email: '',
+            password: '',
+        }
+    });
+
+    const [formState, setFormSate] = useState<FormStateEnum>(FormStateEnum.LOGIN)
+    const onLoginHandler = useCallback((values: User) => {
         const { email, password } = values;
 
         Alert.alert(`Credentials entered. email: ${email}, password: ${password}`);
-    }
+    }, []);
+    const onSignUpHandler = useCallback((values: NewUser) => {
+        const { email, password } = values;
+        // input user:
+    }, []);
+    const handleFormSwap = useCallback((formState: FormStateEnum) => {
+        setFormSate(formState);
+    } , [])
 
     return (
         <View style={styles.container}>
-        <Formik
-            initialValues={{ email: "", password: "" }}
-    onSubmit={(values, actions) => {
-        onLoginHandler(values);
-    }}
-    validationSchema={validationSchema}
-        >
-        {({
-            handleChange,
-            values,
-            errors,
-            touched,
-            handleSubmit,
-            handleBlur,
-        }) => (
-        <>
-            <TextInput
-                style={styles.input}
-    numberOfLines={1}
-    value={values.email}
-    placeholder="Enter email"
-    onChangeText={handleChange("email")}
-    autoCapitalize="none"
-    autoComplete="email"
-    keyboardType="email-address"
-    onBlur={handleBlur("email")}
-    />
-    <ErrorMessage errorValue={touched.email && errors.email} />
-    <TextInput
-    style={styles.input}
-    numberOfLines={1}
-    value={values.password}
-    placeholder="Enter password"
-    onChangeText={handleChange("password")}
-    autoCapitalize="none"
-    onBlur={handleBlur("password")}
-    secureTextEntry={true}
-    />
-    <ErrorMessage errorValue={touched.password && errors.password} />
-    <TouchableOpacity
-    onPress={handleSubmit}
-    style={styles.buttonContainer}
-    >
-    <Text style={styles.buttonText}>Login</Text>
-        </TouchableOpacity>
-        </>
-)}
-    </Formik>
-    </View>
+
+
+            {
+                formState === FormStateEnum.LOGIN ?
+                    <>
+                        <Controller
+                            name={'email'}
+                            control={loginController}
+                            render={({field: { onChange, onBlur, value }}) => <TextInput
+                                style={styles.input}
+                                numberOfLines={1}
+                                value={value}
+                                placeholder="Enter email"
+                                onChangeText={value => onChange(value)}
+                                autoCapitalize="none"
+                                autoComplete="email"
+                                keyboardType="email-address"
+                                onBlur={onBlur}
+                            />}
+                        />
+                        <ErrorMessage errorValue={loginErrors.email?.message} />
+
+                        <Controller
+                            name={'password'}
+                            control={loginController}
+                            rules={{ required: true }}
+                            render={({field: { onChange, onBlur, value }}) => <TextInput
+                                style={styles.input}
+                                numberOfLines={1}
+                                value={value}
+                                placeholder="Enter Password"
+                                onChangeText={value => onChange(value)}
+                                autoCapitalize="none"
+                                secureTextEntry={true}
+                                onBlur={onBlur}
+                            />}
+                        />
+                        <ErrorMessage errorValue={loginErrors.password?.message} />
+
+                    </>
+                    :
+                    <>
+                        <Controller
+                            name={'email'}
+                            control={control}
+                            rules={{ required: true }}
+                            render={({field: { onChange, onBlur, value }}) => <TextInput
+                                    style={styles.input}
+                                    numberOfLines={1}
+                                    value={value}
+                                    placeholder="Enter email"
+                                    onChangeText={value => onChange(value)}
+                                    autoCapitalize="none"
+                                    autoComplete="email"
+                                    keyboardType="email-address"
+                                    onBlur={onBlur}
+                                />}
+                        />
+                        <ErrorMessage errorValue={errors.email?.message} />
+
+                        <Controller
+                            name={'username'}
+                            control={control}
+                            render={({field: { onChange, onBlur, value }}) => <TextInput
+                                style={styles.input}
+                                numberOfLines={1}
+                                value={value}
+                                placeholder="Enter Unique username"
+                                onChangeText={value => onChange(value)}
+                                autoCapitalize="none"
+                                onBlur={onBlur}
+                            />}
+                        />
+                        <ErrorMessage errorValue={errors.username?.message} />
+
+                        {/*<Controller*/}
+                        {/*    name={'userType'}*/}
+                        {/*    control={control}*/}
+                        {/*    render={({field: { onChange, onBlur, value }}) => <Picker*/}
+                        {/*        selectedValue={1}*/}
+                        {/*        onBlur={onBlur}*/}
+                        {/*        onValueChange={(itemValue, itemIndex) =>*/}
+                        {/*            onChange(itemValue)*/}
+                        {/*        }>*/}
+                        {/*        <Picker.Item label='Villain' value="Villain" />*/}
+                        {/*        <Picker.Item label="Hero" value="Hero" />*/}
+                        {/*        <Picker.Item label="Civilian" value="Civilian" />*/}
+                        {/*    </Picker>}*/}
+                        {/*/>*/}
+
+                        <Controller
+                            name={'password'}
+                            control={control}
+                            rules={{ required: true }}
+                            render={({field: { onChange, onBlur, value }}) => <TextInput
+                                style={styles.input}
+                                numberOfLines={1}
+                                value={value}
+                                placeholder="Enter Password"
+                                onChangeText={value => onChange(value)}
+                                autoCapitalize="none"
+                                secureTextEntry={true}
+                                onBlur={onBlur}
+                            />}
+                        />
+                        <ErrorMessage errorValue={errors.password?.message} />
+
+                        <Controller
+                            name={'passwordConfirmation'}
+                            control={control}
+                            rules={{ required: true }}
+                            render={({field: { onChange, onBlur, value }}) => <TextInput
+                                style={styles.input}
+                                numberOfLines={1}
+                                value={value}
+                                placeholder="Enter Password Again"
+                                onChangeText={value => onChange(value)}
+                                autoCapitalize="none"
+                                secureTextEntry={true}
+                                onBlur={() => {
+                                    onBlur()
+                                    trigger('passwordConfirmation').then(result => console.log(result))
+                                }}
+                            />}
+                        />
+                        <ErrorMessage errorValue={errors.passwordConfirmation?.message} />
+                            <TouchableOpacity
+                                onPress={() => handleSubmit(onSignUpHandler)}
+                                style={styles.buttonContainer}
+                            >
+                                <Text style={styles.buttonText}>Sign Up.</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={() => handleFormSwap(FormStateEnum.LOGIN)}
+                            >
+                                <Text style={styles.link}>Not a member.</Text>
+                            </TouchableOpacity>
+                    </>
+            }
+        </View>
 );
 }
 
 const styles = StyleSheet.create({
-    errorContainer: {
-        marginVertical: 5,
-    },
-    errorText: {
-        color: "red",
-    },
     container: {
         flex: 1,
         alignItems: "center",
@@ -128,5 +279,8 @@ const styles = StyleSheet.create({
     buttonText: {
         fontSize: 18,
         color: "#ffffff",
+    },
+    link: {
+        fontSize: 18,
     },
 });

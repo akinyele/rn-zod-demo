@@ -1,88 +1,26 @@
 import {
   View,
-  Text,
-  TouchableOpacity,
-  TextInput,
   StyleSheet,
   Dimensions,
+  Alert
 } from "react-native";
-import { Formik } from "formik";
-import * as Yup from "yup";
+import ZodForm from "./forms/ZodForm";
 
-const validationSchema = Yup.object().shape({
-  email: Yup.string()
-    .label("Email")
-    .email("Enter a valid email")
-    .required("Please enter a registered email"),
-  password: Yup.string()
-    .label("Password")
-    .required()
-    .min(6, "Password must have at least 6 characters "),
-});
-
-const ErrorMessage = ({ errorValue }) => (
-  <View style={styles.errorContainer}>
-    <Text style={styles.errorText}>{errorValue}</Text>
-  </View>
-);
+type formValues = {
+  email: string,
+  password: string
+}
 
 export default function App() {
-  function onLoginHandler(values) {
+  function onLoginHandler(values: formValues) {
     const { email, password } = values;
 
-    alert(`Credentials entered. email: ${email}, password: ${password}`);
+    Alert.alert(`Credentials entered. email: ${email}, password: ${password}`);
   }
 
   return (
     <View style={styles.container}>
-      <Formik
-        initialValues={{ email: "", password: "" }}
-        onSubmit={(values, actions) => {
-          onLoginHandler(values, actions);
-        }}
-        validationSchema={validationSchema}
-      >
-        {({
-          handleChange,
-          values,
-          errors,
-          touched,
-          handleSubmit,
-          handleBlur,
-        }) => (
-          <>
-            <TextInput
-              style={styles.input}
-              numberOfLines={1}
-              value={values.email}
-              placeholder="Enter email"
-              onChangeText={handleChange("email")}
-              autoCapitalize="none"
-              autoCompleteType="email"
-              keyboardType="email-address"
-              onBlur={handleBlur("email")}
-            />
-            <ErrorMessage errorValue={touched.email && errors.email} />
-            <TextInput
-              style={styles.input}
-              numberOfLines={1}
-              value={values.password}
-              placeholder="Enter password"
-              onChangeText={handleChange("password")}
-              autoCapitalize="none"
-              onBlur={handleBlur("password")}
-              secureTextEntry={true}
-            />
-            <ErrorMessage errorValue={touched.password && errors.password} />
-            <TouchableOpacity
-              onPress={handleSubmit}
-              style={styles.buttonContainer}
-            >
-              <Text style={styles.buttonText}>Login</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </Formik>
+        <ZodForm/>
     </View>
   );
 }

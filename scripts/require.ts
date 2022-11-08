@@ -1,10 +1,36 @@
-import * as yup from "yup";
-import * as zod from "zod";
+import z from "zod";
 
-const yupSchema = yup.string()
-type A = yup.InferType<typeof yupSchema>
-const x: A = 12 // wrong, but nothing happens
+/**
+ * By default zod required all parameter
+ */
+const zodUserSchema = z.object({
+    email: z.string(),
+    name: z.string(),
+    age: z.number(),
+    gender: z.string()
+});
 
-// const zodSchema = zod.string();
-// type B = zod.infer<typeof zodSchema>; // string
-// const y: B = 12; // TypeError
+
+const optionalGender = zodUserSchema.extend({
+    gender: z.string().optional()
+})
+
+const JohnDoe = {
+    email: 'john@email.com',
+    name: 'John Doe',
+    age: 20,
+    gender: 'M',
+}
+
+const BobSmith = {
+    email: 'john@email.com',
+    name: 'Bob Smith',
+    age: 20,
+}
+
+zodUserSchema.parse(JohnDoe); // Fine
+optionalGender.parse(BobSmith); // Fine
+zodUserSchema.parse(BobSmith); // Throws Error.
+
+
+
